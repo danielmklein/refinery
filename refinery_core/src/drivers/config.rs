@@ -12,6 +12,9 @@ use crate::traits::sync::{Query, Transaction};
 use crate::traits::{GET_APPLIED_MIGRATIONS_QUERY, GET_LAST_APPLIED_MIGRATION_QUERY};
 use crate::{Error, Migration, Report, Target};
 use async_trait::async_trait;
+use openssl::ssl::{SslConnector, SslMethod, SslVerifyMode};
+use postgres_openssl::MakeTlsConnector;
+
 use std::convert::Infallible;
 
 // we impl all the dependent traits as noop's and then override the methods that call them on Migrate and AsyncMigrate
@@ -80,8 +83,26 @@ macro_rules! with_connection {
                 cfg_if::cfg_if! {
                     if #[cfg(feature = "postgres")] {
                         let path = build_db_url("postgresql", &$config);
-                        let conn = postgres::Client::connect(path.as_str(), postgres::NoTls).migration_err("could not connect to database", None)?;
-                        $op(conn)
+
+                        // TODO: how the hell do we make TLS optional?
+                        // So, the postgres create implements tls support only via other crates: https://docs.rs/postgres/latest/postgres/
+                        //
+                        // As-is, actually supporting the connection string params seems pointless and overly hard.cli
+                        // panic!(path);
+                        let use_ssl = true;
+                        if use_ssl {
+                          // new code:
+                          let mut builder = SslConnector::builder(SslMethod::tls()).unwrap();
+                          builder.set_verify(SslVerifyMode::NONE);
+                          let connector = MakeTlsConnector::new(builder.build());
+                          let conn = postgres::Client::connect(path.as_str(), connector).migration_err("could not connect to database", None)?;
+                          $op(conn)
+                        } else {
+                          // old code:
+                          let conn = postgres::Client::connect(path.as_str(), postgres::NoTls).migration_err("could not connect to database", None)?;
+                          $op(conn)
+                        }
+
                     } else {
                         panic!("tried to migrate from config for a postgresql database, but feature postgres not enabled!");
                     }
@@ -120,6 +141,7 @@ macro_rules! with_connection_async {
                 cfg_if::cfg_if! {
                     if #[cfg(feature = "tokio-postgres")] {
                         let path = build_db_url("postgresql", $config);
+                        // TODO: I think we need to do... stuff... here to support TLS connections.
                         let (client, connection ) = tokio_postgres::connect(path.as_str(), tokio_postgres::NoTls).await.migration_err("could not connect to database", None)?;
                         tokio::spawn(async move {
                             if let Err(e) = connection.await {

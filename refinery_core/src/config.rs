@@ -301,6 +301,7 @@ pub(crate) fn build_db_url(name: &str, config: &Config) -> String {
     if let Some(name) = &config.main.db_name {
         url = url + "/" + name;
     }
+
     url
 }
 

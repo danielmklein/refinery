@@ -41,6 +41,11 @@ futures = { version = "0.3.16", optional = true }
 tokio-util = { version = "0.6.7", features = ["compat"], optional = true }
 time = { version = "0.3.5", features = ["parsing", "formatting"] }
 
+# support TLS connections for postgres
+# TODO: these should really be optional, yeah??
+openssl = { version = "0.10.38" }
+postgres-openssl = { version = "0.5.0" }
+
 # Flate2 needs to be included for mysql to work
 flate2 = { version = "1.0", default-features = false, features = [ "zlib" ], optional = true}
 
