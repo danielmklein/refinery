@@ -89,8 +89,7 @@ macro_rules! with_connection {
                         //
                         // As-is, actually supporting the connection string params seems pointless and overly hard.cli
                         // panic!(path);
-                        let use_ssl = true;
-                        if use_ssl {
+                        if (*&$config.ssl_enabled()) {
                           // new code:
                           let mut builder = SslConnector::builder(SslMethod::tls()).unwrap();
                           builder.set_verify(SslVerifyMode::NONE);

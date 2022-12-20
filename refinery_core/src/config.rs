@@ -36,6 +36,8 @@ impl Config {
                 db_name: None,
                 #[cfg(feature = "tiberius-config")]
                 trust_cert: false,
+                #[cfg(feature = "postgres")]
+                ssl_enabled: false,
             },
         }
     }
@@ -122,6 +124,19 @@ impl Config {
         if #[cfg(feature = "tiberius-config")] {
             pub fn set_trust_cert(&mut self) {
                 self.main.trust_cert = true;
+            }
+        }
+    }
+
+    cfg_if::cfg_if! {
+        if #[cfg(feature = "postgres")] {
+            pub fn set_ssl_enabled(&mut self) {
+                self.main.ssl_enabled = true;
+            }
+
+
+            pub fn ssl_enabled(&self) -> bool {
+                self.main.ssl_enabled
             }
         }
     }
@@ -222,6 +237,13 @@ impl TryFrom<Url> for Config {
             }
         }
 
+        // TODO: the above trust_cert handling from query params might be helpful for postgres SSL stuff
+        cfg_if::cfg_if! {
+            if #[cfg(feature = "postgres")] {
+                let ssl_enabled = true;
+            }
+        }
+
         Ok(Self {
             main: Main {
                 db_type,
@@ -239,6 +261,8 @@ impl TryFrom<Url> for Config {
                 db_name: Some(url.path().trim_start_matches('/').to_string()),
                 #[cfg(feature = "tiberius-config")]
                 trust_cert,
+                #[cfg(feature = "postgres")]
+                ssl_enabled,
             },
         })
     }
@@ -271,6 +295,9 @@ struct Main {
     #[cfg(feature = "tiberius-config")]
     #[serde(default)]
     trust_cert: bool,
+    #[cfg(feature = "postgres")]
+    #[serde(default)]
+    ssl_enabled: bool,
 }
 
 #[cfg(any(
